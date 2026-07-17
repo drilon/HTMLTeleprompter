@@ -203,6 +203,10 @@ While the prompter is running:
       <label>Scroll speed <span id="setupSpeedVal">5</span></label>
       <input type="range" id="setupSpeed" min="1" max="20" value="5">
     </div>
+    <div class="control">
+      <label>Line height <span id="setupLineHeightVal">1.5</span></label>
+      <input type="range" id="setupLineHeight" min="1" max="3" step="0.1" value="1.5">
+    </div>
   </div>
 
   <div class="row">
@@ -238,6 +242,10 @@ While the prompter is running:
       <label>Speed <span id="speedVal">5</span></label>
       <input type="range" id="speedSlider" min="1" max="20" value="5">
     </div>
+    <div class="control">
+      <label>Line height <span id="lineHeightVal">1.5</span></label>
+      <input type="range" id="lineHeightSlider" min="1" max="3" step="0.1" value="1.5">
+    </div>
     <button id="mirrorBtn" class="icon-btn">Mirror</button>
     <button id="fullscreenBtn" class="icon-btn">Fullscreen</button>
   </div>
@@ -254,6 +262,8 @@ While the prompter is running:
   const setupSizeVal = document.getElementById('setupSizeVal');
   const setupSpeed = document.getElementById('setupSpeed');
   const setupSpeedVal = document.getElementById('setupSpeedVal');
+  const setupLineHeight = document.getElementById('setupLineHeight');
+  const setupLineHeightVal = document.getElementById('setupLineHeightVal');
   const setupMirror = document.getElementById('setupMirror');
   const setupCenterLine = document.getElementById('setupCenterLine');
   const startBtn = document.getElementById('startBtn');
@@ -270,6 +280,8 @@ While the prompter is running:
   const sizeVal = document.getElementById('sizeVal');
   const speedSlider = document.getElementById('speedSlider');
   const speedVal = document.getElementById('speedVal');
+  const lineHeightSlider = document.getElementById('lineHeightSlider');
+  const lineHeightVal = document.getElementById('lineHeightVal');
   const mirrorBtn = document.getElementById('mirrorBtn');
   const fullscreenBtn = document.getElementById('fullscreenBtn');
 
@@ -291,6 +303,7 @@ While the prompter is running:
   // ---- Setup sliders (live labels) ----
   setupSize.addEventListener('input', () => { setupSizeVal.textContent = setupSize.value + 'px'; });
   setupSpeed.addEventListener('input', () => { setupSpeedVal.textContent = setupSpeed.value; });
+  setupLineHeight.addEventListener('input', () => { setupLineHeightVal.textContent = setupLineHeight.value; });
 
   // ---- Start ----
   startBtn.addEventListener('click', () => {
@@ -303,6 +316,10 @@ While the prompter is running:
 
     speedSlider.value = setupSpeed.value;
     speedVal.textContent = setupSpeed.value;
+
+    lineHeightSlider.value = setupLineHeight.value;
+    lineHeightVal.textContent = setupLineHeight.value;
+    promptText.style.lineHeight = setupLineHeight.value;
 
     mirrored = setupMirror.checked;
     promptText.classList.toggle('mirrored', mirrored);
@@ -328,6 +345,12 @@ While the prompter is running:
   // ---- Speed slider (display) ----
   speedSlider.addEventListener('input', () => {
     speedVal.textContent = speedSlider.value;
+  });
+
+  // ---- Line height slider (display) ----
+  lineHeightSlider.addEventListener('input', () => {
+    lineHeightVal.textContent = lineHeightSlider.value;
+    promptText.style.lineHeight = lineHeightSlider.value;
   });
 
   // ---- Play / Pause ----
