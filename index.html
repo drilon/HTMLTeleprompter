@@ -104,11 +104,15 @@
 
   #scrollArea {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: hidden;
     scrollbar-width: none;
     padding: 0 40px;
+    touch-action: none;
+    user-select: none;
+    cursor: grab;
   }
   #scrollArea::-webkit-scrollbar { display: none; }
+  #scrollArea.dragging { cursor: grabbing; }
 
   #promptText {
     white-space: pre-wrap;
@@ -379,6 +383,10 @@ While the prompter is running:
     }
   }
 
+  function maxScroll() {
+    return Math.max(0, scrollArea.scrollHeight - scrollArea.clientHeight);
+  }
+
   let lastTime = null;
   function step(timestamp) {
     if (!scrolling) return;
@@ -387,11 +395,11 @@ While the prompter is running:
     lastTime = timestamp;
 
     const speed = parseFloat(speedSlider.value); // px-per-second multiplier
-    scrollPos += speed * 18 * dt;
+    scrollPos = Math.min(maxScroll(), scrollPos + speed * 18 * dt);
     scrollArea.scrollTop = scrollPos;
 
     // stop at bottom
-    if (scrollArea.scrollTop >= scrollArea.scrollHeight - scrollArea.clientHeight - 1) {
+    if (scrollPos >= maxScroll() - 1) {
       setPlaying(false);
       return;
     }
@@ -417,7 +425,10 @@ While the prompter is running:
   function applyFlip() {
     const signX = (mirrored ? -1 : 1) * (flippedH ? -1 : 1);
     const signY = flippedV ? -1 : 1;
-    promptText.style.transform = `scale(${signX}, ${signY})`;
+    // Flip the fixed-size viewport (scrollArea), not the scrollable content
+    // itself — flipping the tall content would mirror it around its own
+    // (much larger) center instead of around what's actually on screen.
+    scrollArea.style.transform = `scale(${signX}, ${signY})`;
     mirrorBtn.classList.toggle('secondary', !mirrored);
     flipHBtn.classList.toggle('secondary', !flippedH);
     flipVBtn.classList.toggle('secondary', !flippedV);
@@ -437,6 +448,44 @@ While the prompter is running:
     flippedV = !flippedV;
     applyFlip();
   });
+
+  // ---- Drag to seek (works while playing or paused) ----
+  let dragging = false;
+  let dragStartY = 0;
+  let dragStartScrollPos = 0;
+  let wasPlayingBeforeDrag = false;
+
+  scrollArea.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    dragging = true;
+    dragStartY = e.clientY;
+    dragStartScrollPos = scrollPos;
+    wasPlayingBeforeDrag = scrolling;
+    if (scrolling) setPlaying(false);
+    scrollArea.classList.add('dragging');
+    scrollArea.setPointerCapture(e.pointerId);
+    showHud();
+  });
+
+  scrollArea.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const deltaY = e.clientY - dragStartY;
+    const sign = flippedV ? -1 : 1;
+    scrollPos = Math.min(maxScroll(), Math.max(0, dragStartScrollPos - deltaY * sign));
+    scrollArea.scrollTop = scrollPos;
+  });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    scrollArea.classList.remove('dragging');
+    if (scrollArea.hasPointerCapture(e.pointerId)) {
+      scrollArea.releasePointerCapture(e.pointerId);
+    }
+    if (wasPlayingBeforeDrag) setPlaying(true);
+  }
+  scrollArea.addEventListener('pointerup', endDrag);
+  scrollArea.addEventListener('pointercancel', endDrag);
 
   fullscreenBtn.addEventListener('click', () => {
     if (!document.fullscreenElement) {
