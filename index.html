@@ -123,6 +123,9 @@
     text-align: center;
     transition: font-size 0.1s linear;
   }
+  /* Mirror reflects each word in place; word order stays left-to-right */
+  #promptText .w { display: inline-block; }
+  #promptText.word-mirror .w { transform: scaleX(-1); }
 
   #centerLine {
     position: fixed;
@@ -321,10 +324,32 @@ While the prompter is running:
   setupSpeed.addEventListener('input', () => { setupSpeedVal.textContent = setupSpeed.value; });
   setupLineHeight.addEventListener('input', () => { setupLineHeightVal.textContent = setupLineHeight.value; });
 
+  let scriptText = '';
+
+  // Wrap each word in a span so Mirror can reflect words individually.
+  // Mirrored playback streams top-to-bottom, so line order is reversed
+  // to keep the script reading first-line-first at the center guide.
+  function renderScript() {
+    const lines = scriptText.split('\n');
+    if (mirrored) lines.reverse();
+    promptText.textContent = '';
+    lines.join('\n').split(/(\s+)/).forEach((tok) => {
+      if (!tok) return;
+      if (/^\s+$/.test(tok)) {
+        promptText.appendChild(document.createTextNode(tok));
+      } else {
+        const s = document.createElement('span');
+        s.className = 'w';
+        s.textContent = tok;
+        promptText.appendChild(s);
+      }
+    });
+  }
+
   // ---- Start ----
   startBtn.addEventListener('click', () => {
     const text = textInput.value.trim();
-    promptText.textContent = text.length ? text : '(No text entered)';
+    scriptText = text.length ? text : '(No text entered)';
 
     sizeSlider.value = setupSize.value;
     sizeVal.textContent = setupSize.value + 'px';
@@ -340,6 +365,8 @@ While the prompter is running:
     mirrored = setupMirror.checked;
     flippedH = setupFlipH.checked;
     flippedV = setupFlipV.checked;
+    renderScript();
+    applyMirror();
     applyFlip();
 
     centerLine.classList.toggle('show', setupCenterLine.checked);
@@ -347,8 +374,9 @@ While the prompter is running:
     setup.style.display = 'none';
     display.classList.add('active');
 
-    scrollArea.scrollTop = 0;
-    scrollPos = 0;
+    // Mirrored playback streams top-to-bottom, so it starts at the end
+    scrollPos = mirrored ? maxScroll() : 0;
+    scrollArea.scrollTop = scrollPos;
     setPlaying(false);
     showHud();
   });
@@ -376,6 +404,11 @@ While the prompter is running:
     playPauseBtn.textContent = scrolling ? 'Pause' : 'Play';
     if (scrolling) {
       scrollPos = scrollArea.scrollTop;
+      // If starting play from the finished end, restart from the beginning
+      // (the "beginning" is the bottom when mirrored playback runs in reverse)
+      if (mirrored && scrollPos <= 1) scrollPos = maxScroll();
+      if (!mirrored && scrollPos >= maxScroll() - 1) scrollPos = 0;
+      scrollArea.scrollTop = scrollPos;
       lastTime = null;
       rafId = requestAnimationFrame(step);
     } else if (rafId) {
@@ -396,11 +429,12 @@ While the prompter is running:
     lastTime = timestamp;
 
     const speed = parseFloat(speedSlider.value); // px-per-second multiplier
-    scrollPos = Math.min(maxScroll(), scrollPos + speed * 18 * dt);
+    const dir = mirrored ? -1 : 1; // mirrored playback streams top-to-bottom
+    scrollPos = Math.min(maxScroll(), Math.max(0, scrollPos + speed * 18 * dt * dir));
     scrollArea.scrollTop = scrollPos;
 
-    // stop at bottom
-    if (scrollPos >= maxScroll() - 1) {
+    // stop at the end of playback (top when mirrored, bottom otherwise)
+    if (dir > 0 ? scrollPos >= maxScroll() - 1 : scrollPos <= 1) {
       setPlaying(false);
       return;
     }
@@ -411,8 +445,8 @@ While the prompter is running:
 
   resetBtn.addEventListener('click', () => {
     setPlaying(false);
-    scrollArea.scrollTop = 0;
-    scrollPos = 0;
+    scrollPos = mirrored ? maxScroll() : 0;
+    scrollArea.scrollTop = scrollPos;
   });
 
   editBtn.addEventListener('click', exitToEditor);
@@ -423,21 +457,26 @@ While the prompter is running:
     setup.style.display = 'flex';
   }
 
+  function applyMirror() {
+    promptText.classList.toggle('word-mirror', mirrored);
+    mirrorBtn.classList.toggle('secondary', !mirrored);
+  }
+
   function applyFlip() {
-    const signX = (mirrored ? -1 : 1) * (flippedH ? -1 : 1);
-    const signY = flippedV ? -1 : 1;
     // Flip the fixed-size viewport (scrollArea), not the scrollable content
     // itself — flipping the tall content would mirror it around its own
     // (much larger) center instead of around what's actually on screen.
-    scrollArea.style.transform = `scale(${signX}, ${signY})`;
-    mirrorBtn.classList.toggle('secondary', !mirrored);
+    scrollArea.style.transform = `scale(${flippedH ? -1 : 1}, ${flippedV ? -1 : 1})`;
     flipHBtn.classList.toggle('secondary', !flippedH);
     flipVBtn.classList.toggle('secondary', !flippedV);
   }
 
   mirrorBtn.addEventListener('click', () => {
     mirrored = !mirrored;
-    applyFlip();
+    renderScript(); // line order changes with playback direction
+    applyMirror();
+    scrollPos = mirrored ? maxScroll() : 0;
+    scrollArea.scrollTop = scrollPos;
   });
 
   flipHBtn.addEventListener('click', () => {
