@@ -208,7 +208,10 @@ While the prompter is running:
 
   <div class="row">
     <label class="hint" style="display:flex;align-items:center;gap:6px;">
-      <input type="checkbox" id="setupFlipH" style="width:auto;"> Flip horizontal (for teleprompter glass)
+      <input type="checkbox" id="setupMirror" style="width:auto;"> Mirror text (for teleprompter glass)
+    </label>
+    <label class="hint" style="display:flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="setupFlipH" style="width:auto;"> Flip horizontal
     </label>
     <label class="hint" style="display:flex;align-items:center;gap:6px;">
       <input type="checkbox" id="setupFlipV" style="width:auto;"> Flip vertical
@@ -246,6 +249,7 @@ While the prompter is running:
       <label>Line height <span id="lineHeightVal">1.5</span></label>
       <input type="range" id="lineHeightSlider" min="1" max="3" step="0.1" value="1.5">
     </div>
+    <button id="mirrorBtn" class="icon-btn">Mirror</button>
     <button id="flipHBtn" class="icon-btn">Flip H</button>
     <button id="flipVBtn" class="icon-btn">Flip V</button>
     <button id="fullscreenBtn" class="icon-btn">Fullscreen</button>
@@ -265,6 +269,7 @@ While the prompter is running:
   const setupSpeedVal = document.getElementById('setupSpeedVal');
   const setupLineHeight = document.getElementById('setupLineHeight');
   const setupLineHeightVal = document.getElementById('setupLineHeightVal');
+  const setupMirror = document.getElementById('setupMirror');
   const setupFlipH = document.getElementById('setupFlipH');
   const setupFlipV = document.getElementById('setupFlipV');
   const setupCenterLine = document.getElementById('setupCenterLine');
@@ -284,11 +289,13 @@ While the prompter is running:
   const speedVal = document.getElementById('speedVal');
   const lineHeightSlider = document.getElementById('lineHeightSlider');
   const lineHeightVal = document.getElementById('lineHeightVal');
+  const mirrorBtn = document.getElementById('mirrorBtn');
   const flipHBtn = document.getElementById('flipHBtn');
   const flipVBtn = document.getElementById('flipVBtn');
   const fullscreenBtn = document.getElementById('fullscreenBtn');
 
   let scrolling = false;
+  let mirrored = false;
   let flippedH = false;
   let flippedV = false;
   let rafId = null;
@@ -325,6 +332,7 @@ While the prompter is running:
     lineHeightVal.textContent = setupLineHeight.value;
     promptText.style.lineHeight = setupLineHeight.value;
 
+    mirrored = setupMirror.checked;
     flippedH = setupFlipH.checked;
     flippedV = setupFlipV.checked;
     applyFlip();
@@ -407,10 +415,18 @@ While the prompter is running:
   }
 
   function applyFlip() {
-    promptText.style.transform = `scale(${flippedH ? -1 : 1}, ${flippedV ? -1 : 1})`;
+    const signX = (mirrored ? -1 : 1) * (flippedH ? -1 : 1);
+    const signY = flippedV ? -1 : 1;
+    promptText.style.transform = `scale(${signX}, ${signY})`;
+    mirrorBtn.classList.toggle('secondary', !mirrored);
     flipHBtn.classList.toggle('secondary', !flippedH);
     flipVBtn.classList.toggle('secondary', !flippedV);
   }
+
+  mirrorBtn.addEventListener('click', () => {
+    mirrored = !mirrored;
+    applyFlip();
+  });
 
   flipHBtn.addEventListener('click', () => {
     flippedH = !flippedH;
